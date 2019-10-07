@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
+import Main from './Main'
 
-const Container = styled.main`
-  display: flex;
-  justify-content: center;
-  align-items: center;
+const ButtonContainer = styled.div`
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 100vh;
+`;
+
+const Container = styled.main`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
 `;
 
 const Button = styled.button`
@@ -27,29 +32,47 @@ const Button = styled.button`
 `;
 
 const Home = () => {
+
+  const [fileList, setFileList] = useState([]);
+  const [folderUrl, setFolderUrl] = useState('');
+
   function handleClick() {
     const { remote } = require('electron');
     const { dialog } = remote;
+
     const fs = remote.require('fs');
+    let filesPromises = [];
     dialog.showOpenDialog(
-      {
-        properties: ['openFile', 'openDirectory', 'multiSelections']
-      },
-      result => {
-        console.log(result);
-        fs.readdir(result[0], (err, files) => {
-          fs.readFile(result[0] + '/' + files[0], (err, data) => {
-            console.log(data);
-          })
-        });
-      }
+        {
+          properties: ['openFile', 'openDirectory', 'multiSelections']
+        },
+        result => {
+          setFolderUrl(result[0]);
+          fs.readdir(result[0], (err, files) => {
+
+            files.forEach(fileName => {
+              fs.readFile(result[0] + '/' + fileName, (err, data) => {
+                  const file = new File([data.buffer], fileName);
+                  setFileList([...fileList, file])
+              })
+            });
+          });
+        }
     );
+
   }
 
   return (
-    <Container>
-      <Button onClick={handleClick}>заебалб выбери папку</Button>
-    </Container>
+      <ButtonContainer>
+        {
+          fileList.length === 0 ?
+              <Container>
+                <Button onClick={handleClick}>заебалб выбери папку</Button>
+              </Container>
+              :
+              <Main files={fileList} folderUrl={folderUrl} />
+        }
+      </ButtonContainer>
   );
 };
 
