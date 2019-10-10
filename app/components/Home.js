@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import Main from './Main'
 
 const ButtonContainer = styled.div`
   width: 100%;
-  max-width: 1200px;
+  max-width: 600px;
   margin: 0 auto;
 `;
 
@@ -33,44 +33,60 @@ const Button = styled.button`
 
 const Home = () => {
 
-  const [fileList, setFileList] = useState([]);
+  const [state, setState] = useState({ files: [] });
   const [folderUrl, setFolderUrl] = useState('');
+
+  const inputRef = useRef(null);
 
   function handleClick() {
     const { remote } = require('electron');
     const { dialog } = remote;
 
     const fs = remote.require('fs');
+    const util = remote.require('util');
+    const stat = util.promisify(fs.stat);
+
+
     let filesPromises = [];
     dialog.showOpenDialog(
         {
           properties: ['openFile', 'openDirectory', 'multiSelections']
         },
         result => {
+          if (result === undefined) return;
           setFolderUrl(result[0]);
-          fs.readdir(result[0], (err, files) => {
+          fs.readdir(result[0], async (err, files) => {
+              for (let fileName of files) {
+                  const promise = new Promise(resolve => {
+                      fs.readFile(result[0] + '/' + fileName, (err, data) => {
+                          //const file = new File([data.buffer], fileName);
+                          const metadata = fs.statSync(result[0] + '/' + fileName);
+                          console.log(metadata);
+                          resolve(metadata)
+                      })
+                  });
+                  filesPromises.push(promise)
+              }
 
-            files.forEach(fileName => {
-              fs.readFile(result[0] + '/' + fileName, (err, data) => {
-                  const file = new File([data.buffer], fileName);
-                  setFileList([...fileList, file])
+              Promise.all(filesPromises).then(result => {
+                  setState({
+                      files: [...result]
+                  })
               })
-            });
           });
         }
     );
-
   }
 
   return (
       <ButtonContainer>
         {
-          fileList.length === 0 ?
+            state.files.length === 0 ?
               <Container>
                 <Button onClick={handleClick}>заебалб выбери папку</Button>
               </Container>
               :
-              <Main files={fileList} folderUrl={folderUrl} />
+              <Main files={state.files} folderUrl={folderUrl} />
         }
       </ButtonContainer>
   );
