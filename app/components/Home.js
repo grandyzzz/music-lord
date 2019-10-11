@@ -1,14 +1,17 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import Main from './Main'
+import filesize from 'filesize';
+import NodeID3 from 'node-id3'
+import getMP3Duration from 'get-mp3-duration'
 
-const ButtonContainer = styled.div`
+const Container = styled.div`
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
 `;
 
-const Container = styled.main`
+const ButtonContainer = styled.main`
   width: 100%;
   display: flex;
   justify-content: center;
@@ -31,6 +34,25 @@ const Button = styled.button`
   cursor: pointer;
 `;
 
+const getFormattedDate = time => {
+    let actualDate = new Date(time);
+    return `${('0' + actualDate.getDate()).slice(-2)}.${('0' + (actualDate.getMonth() + 1)).slice(-2)}.${actualDate.getFullYear()}`
+};
+
+const getFormattedTime = time => {
+    const allSeconds = Math.round(time / 1000);
+    const seconds = allSeconds % 60;
+    const minutes = Math.floor(allSeconds / 60);
+
+    return `${minutes}:${seconds}`
+};
+
+const getFileExtension = fileName => {
+    const splitArray = fileName.split('.');
+
+    return splitArray[splitArray.length - 1]
+};
+
 const Home = () => {
 
   const [state, setState] = useState({ files: [] });
@@ -43,8 +65,7 @@ const Home = () => {
     const { dialog } = remote;
 
     const fs = remote.require('fs');
-    const util = remote.require('util');
-    const stat = util.promisify(fs.stat);
+    const size = filesize.partial({ locale: 'ru' });
 
 
     let filesPromises = [];
@@ -58,11 +79,32 @@ const Home = () => {
           fs.readdir(result[0], async (err, files) => {
               for (let fileName of files) {
                   const promise = new Promise(resolve => {
-                      fs.readFile(result[0] + '/' + fileName, (err, data) => {
+                      const path = result[0] + '/' + fileName;
+
+                      fs.readFile(path, (err, data) => {
                           //const file = new File([data.buffer], fileName);
                           const metadata = fs.statSync(result[0] + '/' + fileName);
-                          console.log(metadata);
-                          resolve(metadata)
+
+                          const extension = getFileExtension(fileName);
+                          let item = {
+                              fileName: fileName,
+                              lastModifiedDate: getFormattedDate(metadata.atime),
+                              size: size(metadata.size),
+                              extension
+                          };
+
+                          if (extension === 'mp3') {
+
+                              NodeID3.read(path, (err, tags) => {
+                                  console.log(tags);
+                              });
+
+                              const duration = getMP3Duration(data);
+
+                              item.duration = getFormattedTime(duration)
+                          }
+
+                          resolve(item)
                       })
                   });
                   filesPromises.push(promise)
@@ -79,16 +121,16 @@ const Home = () => {
   }
 
   return (
-      <ButtonContainer>
+      <Container>
         {
             state.files.length === 0 ?
-              <Container>
+              <ButtonContainer>
                 <Button onClick={handleClick}>заебалб выбери папку</Button>
-              </Container>
+              </ButtonContainer>
               :
               <Main files={state.files} folderUrl={folderUrl} />
         }
-      </ButtonContainer>
+      </Container>
   );
 };
 
