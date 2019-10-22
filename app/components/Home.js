@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import Main from './Main'
 import filesize from 'filesize';
@@ -7,7 +7,7 @@ import getMP3Duration from 'get-mp3-duration'
 
 const Container = styled.div`
   width: 100%;
-  max-width: 600px;
+  max-width: 750px;
   margin: 0 auto;
 `;
 
@@ -44,7 +44,7 @@ const getFormattedTime = time => {
     const seconds = allSeconds % 60;
     const minutes = Math.floor(allSeconds / 60);
 
-    return `${minutes}:${seconds}`
+    return `${minutes}:${('0' + seconds).slice(-2)}`
 };
 
 const getFileExtension = fileName => {
@@ -57,8 +57,6 @@ const Home = () => {
 
   const [state, setState] = useState({ files: [] });
   const [folderUrl, setFolderUrl] = useState('');
-
-  const inputRef = useRef(null);
 
   function handleClick() {
     const { remote } = require('electron');
@@ -82,12 +80,12 @@ const Home = () => {
                       const path = result[0] + '/' + fileName;
 
                       fs.readFile(path, (err, data) => {
-                          //const file = new File([data.buffer], fileName);
                           const metadata = fs.statSync(result[0] + '/' + fileName);
 
                           const extension = getFileExtension(fileName);
+
                           let item = {
-                              fileName: fileName,
+                              fileName: fileName.slice(0, -extension.length - 1),
                               lastModifiedDate: getFormattedDate(metadata.atime),
                               size: size(metadata.size),
                               extension
@@ -97,14 +95,18 @@ const Home = () => {
 
                               NodeID3.read(path, (err, tags) => {
                                   console.log(tags);
+                                  const { artist, title } = tags;
+
+                                  if (artist !== undefined) item.artist = artist;
+                                  if (title !== undefined) item.title = title;
+
+                                  const duration = getMP3Duration(data);
+
+                                  item.duration = getFormattedTime(duration);
+
+                                  resolve(item)
                               });
-
-                              const duration = getMP3Duration(data);
-
-                              item.duration = getFormattedTime(duration)
                           }
-
-                          resolve(item)
                       })
                   });
                   filesPromises.push(promise)
