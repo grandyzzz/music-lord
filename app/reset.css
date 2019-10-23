@@ -5,6 +5,7 @@
 
 body {
     background: #E5E5E5;
+    -webkit-font-smoothing: antialiased;
 }
 
 html, body, div, span, applet, object, iframe,

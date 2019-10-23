@@ -106,7 +106,7 @@ const Home = () => {
 
                                   resolve(item)
                               });
-                          }
+                          } else { resolve(item) }
                       })
                   });
                   filesPromises.push(promise)
